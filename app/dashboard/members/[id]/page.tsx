@@ -24,7 +24,7 @@ export default function MemberDetail() {
   const { user, error: authError, isLoading: authLoading } = useUser();
   const router = useRouter();
   const params = useParams();
-  const memberAuth0Id = params?.id as string;
+  const memberAuth0Id = params?.id ? decodeURIComponent(params.id as string) : undefined;
 
   const [member, setMember] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
