@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -12,8 +12,40 @@ interface SidebarProps {
 export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
   const { user } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loadingRole, setLoadingRole] = useState(true);
 
-  const navigation = [
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user?.sub) {
+        setLoadingRole(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("https://api.any-gym.com/admin/user", {
+          headers: {
+            "auth0_id": user.sub,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Check for role in different possible fields
+          const role = data.role || data.roles?.[0] || data.user_role || null;
+          setUserRole(role);
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+      } finally {
+        setLoadingRole(false);
+      }
+    };
+
+    fetchUserRole();
+  }, [user?.sub]);
+
+  const baseNavigation = [
     { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
     { name: "Gyms", href: "/gyms", icon: BuildingOfficeIcon },
     { name: "Events", href: "/events", icon: TicketIcon },
@@ -21,6 +53,14 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
     { name: "Bookings", href: "/dashboard/bookings", icon: CalendarIcon },
     { name: "Reports", href: "/dashboard/reports", icon: ChartBarIcon },
     { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
+  ];
+
+  // Add User Management menu item if user has admin or gym_admin role
+  const navigation = [
+    ...baseNavigation,
+    ...(userRole === "admin" || userRole === "gym_admin"
+      ? [{ name: "User Management", href: "/dashboard/users", icon: UserCircleIcon }]
+      : []),
   ];
 
   return (
@@ -319,6 +359,18 @@ function TicketIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z"
+      />
+    </svg>
+  );
+}
+
+function UserCircleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" {...props}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"
       />
     </svg>
   );
