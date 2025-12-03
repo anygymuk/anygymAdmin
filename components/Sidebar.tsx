@@ -48,11 +48,11 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
   const baseNavigation = [
     { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
     { name: "Gyms", href: "/gyms", icon: BuildingOfficeIcon },
-    { name: "Events", href: "/events", icon: TicketIcon },
     { name: "Members", href: "/dashboard/members", icon: UsersIcon },
-    { name: "Bookings", href: "/dashboard/bookings", icon: CalendarIcon },
+    { name: "Passes", href: "/dashboard/bookings", icon: TicketIcon },
     { name: "Reports", href: "/dashboard/reports", icon: ChartBarIcon },
     { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
+    { name: "Events", href: "/events", icon: HourglassIcon },
   ];
 
   // Add User Management menu item if user has admin or gym_admin role
@@ -347,6 +347,18 @@ function Cog6ToothIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    </svg>
+  );
+}
+
+function HourglassIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" {...props}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3v2.25m0 0V3m0 2.25h-2.25M12 5.25h2.25M9 3h6m-6 18h6m-6-18v2.25M15 3v2.25M9 21v-2.25m0 0V21m0-2.25h2.25M9 18.75h2.25M15 21v-2.25m0 0V21m0-2.25h-2.25M15 18.75h-2.25M9 5.25L12 9l3-3.75M9 18.75L12 15l3 3.75"
       />
     </svg>
   );

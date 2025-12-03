@@ -35,6 +35,7 @@ export default function UserManagement() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState(false);
+  const [gymSearchQuery, setGymSearchQuery] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -135,8 +136,8 @@ export default function UserManagement() {
       let gymsToFetch: Gym[] = [];
 
       if (currentUserInfo.role === "admin") {
-        // Fetch all gyms (they should be filtered by gym_chain_id on backend)
-        const response = await fetch("https://api.any-gym.com/admin/gyms", {
+        // Fetch all locations (they should be filtered by gym_chain_id on backend)
+        const response = await fetch("https://api.any-gym.com/admin/locations", {
           headers: {
             "auth0_id": user.sub,
           },
@@ -153,25 +154,30 @@ export default function UserManagement() {
           }
         }
       } else if (currentUserInfo.role === "gym_admin" && currentUserInfo.access_gyms) {
-        // Fetch specific gyms from access_gyms array
-        const gymPromises = currentUserInfo.access_gyms.map(async (gymId) => {
-          try {
-            const response = await fetch(`https://api.any-gym.com/admin/gyms/${gymId}`, {
-              headers: {
-                "auth0_id": user.sub,
-              },
-            });
-            if (response.ok) {
-              return await response.json();
-            }
-          } catch (err) {
-            console.error(`Error fetching gym ${gymId}:`, err);
-          }
-          return null;
+        // Fetch all locations and filter by access_gyms
+        const response = await fetch("https://api.any-gym.com/admin/locations", {
+          headers: {
+            "auth0_id": user.sub,
+          },
         });
 
-        const gymResults = await Promise.all(gymPromises);
-        gymsToFetch = gymResults.filter((gym) => gym !== null) as Gym[];
+        if (response.ok) {
+          const data = await response.json();
+          let allLocations: Gym[] = [];
+          
+          if (Array.isArray(data)) {
+            allLocations = data;
+          } else if (data.results && Array.isArray(data.results)) {
+            allLocations = data.results;
+          } else if (data.data && Array.isArray(data.data)) {
+            allLocations = data.data;
+          }
+          
+          // Filter locations by access_gyms array
+          gymsToFetch = allLocations.filter((location) =>
+            currentUserInfo.access_gyms?.includes(location.id)
+          );
+        }
       }
 
       setAvailableGyms(gymsToFetch);
@@ -380,6 +386,7 @@ export default function UserManagement() {
                   setValidationErrors({});
                   setCreateError(null);
                   setCreateSuccess(false);
+                  setGymSearchQuery("");
                   setShowCreateModal(true);
                 }}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -540,6 +547,7 @@ export default function UserManagement() {
                         setCreateError(null);
                         setCreateSuccess(false);
                         setValidationErrors({});
+                        setGymSearchQuery("");
                       }
                     }}
                   ></div>
@@ -565,125 +573,268 @@ export default function UserManagement() {
                           </div>
                         )}
 
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                           {/* Name */}
                           <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                               Name <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="text"
-                              id="name"
-                              value={formData.name}
-                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
-                                validationErrors.name ? "border-red-300" : ""
-                              }`}
-                            />
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <input
+                                type="text"
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className={`block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-1 sm:text-sm ${
+                                  validationErrors.name
+                                    ? "border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500"
+                                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                }`}
+                                placeholder="Enter full name"
+                              />
+                            </div>
                             {validationErrors.name && (
-                              <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+                              <p className="mt-2 text-sm text-red-600" role="alert">
+                                {validationErrors.name}
+                              </p>
                             )}
                           </div>
 
                           {/* Email */}
                           <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                               Email <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="email"
-                              id="email"
-                              value={formData.email}
-                              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
-                                validationErrors.email ? "border-red-300" : ""
-                              }`}
-                            />
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg
+                                  className="h-5 w-5 text-gray-400"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                </svg>
+                              </div>
+                              <input
+                                type="email"
+                                id="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className={`block w-full pl-10 border rounded-md py-2 px-3 focus:outline-none focus:ring-1 sm:text-sm ${
+                                  validationErrors.email
+                                    ? "border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500"
+                                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                }`}
+                                placeholder="user@example.com"
+                              />
+                            </div>
                             {validationErrors.email && (
-                              <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                              <p className="mt-2 text-sm text-red-600" role="alert">
+                                {validationErrors.email}
+                              </p>
                             )}
                           </div>
 
                           {/* Password */}
                           <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                               Password <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="password"
-                              id="password"
-                              value={formData.password}
-                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
-                                validationErrors.password ? "border-red-300" : ""
-                              }`}
-                            />
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg
+                                  className="h-5 w-5 text-gray-400"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                              <input
+                                type="password"
+                                id="password"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className={`block w-full pl-10 border rounded-md py-2 px-3 focus:outline-none focus:ring-1 sm:text-sm ${
+                                  validationErrors.password
+                                    ? "border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500"
+                                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                }`}
+                                placeholder="Enter password"
+                              />
+                            </div>
                             {validationErrors.password && (
-                              <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                              <p className="mt-2 text-sm text-red-600" role="alert">
+                                {validationErrors.password}
+                              </p>
                             )}
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-2 text-xs text-gray-500">
                               Must be at least 10 characters with at least one number and one special character
                             </p>
                           </div>
 
                           {/* Role */}
                           <div>
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
                               Role <span className="text-red-500">*</span>
                             </label>
-                            <select
-                              id="role"
-                              value={formData.role}
-                              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            >
-                              <option value="gym_admin">Gym Admin</option>
-                              <option value="gym_staff">Gym Staff</option>
-                            </select>
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <select
+                                id="role"
+                                value={formData.role}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                className="block w-full border border-gray-300 rounded-md py-2 px-3 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none"
+                              >
+                                <option value="gym_admin">Gym Admin</option>
+                                <option value="gym_staff">Gym Staff</option>
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <svg
+                                  className="h-5 w-5 text-gray-400"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Permission */}
                           <div>
-                            <label htmlFor="permission" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="permission" className="block text-sm font-medium text-gray-700 mb-1">
                               Permission <span className="text-red-500">*</span>
                             </label>
-                            <select
-                              id="permission"
-                              value={formData.permission}
-                              onChange={(e) => setFormData({ ...formData, permission: e.target.value })}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            >
-                              <option value="read">Read</option>
-                              <option value="write">Write</option>
-                            </select>
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <select
+                                id="permission"
+                                value={formData.permission}
+                                onChange={(e) => setFormData({ ...formData, permission: e.target.value })}
+                                className="block w-full border border-gray-300 rounded-md py-2 px-3 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none"
+                              >
+                                <option value="read">Read</option>
+                                <option value="write">Write</option>
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <svg
+                                  className="h-5 w-5 text-gray-400"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Access Gyms */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
                               Access Gyms
                             </label>
                             {loadingGyms ? (
-                              <div className="text-sm text-gray-500">Loading gyms...</div>
-                            ) : availableGyms.length === 0 ? (
-                              <div className="text-sm text-gray-500">No gyms available</div>
-                            ) : (
-                              <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-md p-2">
-                                {availableGyms.map((gym) => (
-                                  <label
-                                    key={gym.id}
-                                    className="flex items-center py-2 px-3 hover:bg-gray-50 rounded cursor-pointer"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={formData.access_gyms.includes(gym.id)}
-                                      onChange={() => handleGymToggle(gym.id)}
-                                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    />
-                                    <span className="ml-2 text-sm text-gray-700">{gym.name}</span>
-                                  </label>
-                                ))}
+                              <div className="mt-2 text-sm text-gray-500 flex items-center">
+                                <svg
+                                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  ></circle>
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  ></path>
+                                </svg>
+                                Loading gyms...
                               </div>
+                            ) : availableGyms.length === 0 ? (
+                              <div className="mt-2 text-sm text-gray-500">No gyms available</div>
+                            ) : (
+                              <>
+                                {/* Search Field */}
+                                <div className="mt-1 mb-2 relative rounded-md shadow-sm">
+                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg
+                                      className="h-5 w-5 text-gray-400"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    value={gymSearchQuery}
+                                    onChange={(e) => setGymSearchQuery(e.target.value)}
+                                    className="block w-full pl-10 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    placeholder="Search gyms..."
+                                  />
+                                </div>
+                                {/* Filtered Gym List */}
+                                <div className="border border-gray-300 rounded-md shadow-sm max-h-48 overflow-y-auto bg-white">
+                                  {availableGyms
+                                    .filter((gym) =>
+                                      gym.name.toLowerCase().includes(gymSearchQuery.toLowerCase())
+                                    )
+                                    .map((gym) => (
+                                      <label
+                                        key={gym.id}
+                                        className="flex items-center py-2 px-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={formData.access_gyms.includes(gym.id)}
+                                          onChange={() => handleGymToggle(gym.id)}
+                                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <span className="ml-3 text-sm text-gray-700">{gym.name}</span>
+                                      </label>
+                                    ))}
+                                  {availableGyms.filter((gym) =>
+                                    gym.name.toLowerCase().includes(gymSearchQuery.toLowerCase())
+                                  ).length === 0 && (
+                                    <div className="py-4 px-4 text-sm text-gray-500 text-center">
+                                      No gyms found matching "{gymSearchQuery}"
+                                    </div>
+                                  )}
+                                </div>
+                              </>
                             )}
                           </div>
                         </div>
@@ -703,6 +854,7 @@ export default function UserManagement() {
                             setCreateError(null);
                             setCreateSuccess(false);
                             setValidationErrors({});
+                            setGymSearchQuery("");
                           }}
                           disabled={creating}
                           className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
