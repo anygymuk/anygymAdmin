@@ -50,6 +50,7 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
     { name: "Gyms", href: "/gyms", icon: BuildingOfficeIcon },
     { name: "Members", href: "/dashboard/members", icon: UsersIcon },
     { name: "Passes", href: "/dashboard/bookings", icon: TicketIcon },
+    { name: "Check-in", href: "/dashboard/check-in", icon: QrCodeIcon },
     { name: "Reports", href: "/dashboard/reports", icon: ChartBarIcon },
     { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
     { name: "Events", href: "/events", icon: HourglassIcon },
@@ -371,6 +372,18 @@ function TicketIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z"
+      />
+    </svg>
+  );
+}
+
+function QrCodeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" {...props}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 4.5h4.5v4.5h-4.5V4.5zM3.75 15h4.5v4.5h-4.5V15zM13.5 4.5h4.5v4.5h-4.5V4.5zM9 9h.008v.008H9V9zM15 9h.008v.008H15V9zM9 15h.008v.008H9V15zM15 15h.008v.008H15V15zM13.5 15h4.5v4.5h-4.5V15zM21 3v6M3 21h6M21 21v-6M3 3h6"
       />
     </svg>
   );
