@@ -423,10 +423,19 @@ export default function Events() {
                                 </span>
                               );
                             } else if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-                              // Format date strings
+                              // Format date strings to show full date and time
                               try {
                                 const date = new Date(value);
-                                displayValue = date.toLocaleDateString();
+                                // Format as full date and time (DD/MM/YYYY, HH:MM:SS)
+                                displayValue = date.toLocaleString('en-GB', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                  hour12: false
+                                });
                               } catch {
                                 displayValue = value;
                               }

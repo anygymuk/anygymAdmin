@@ -51,7 +51,7 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
     { name: "Members", href: "/dashboard/members", icon: UsersIcon },
     { name: "Passes", href: "/dashboard/bookings", icon: TicketIcon },
     { name: "Check-in", href: "/dashboard/check-in", icon: QrCodeIcon },
-    { name: "Reports", href: "/dashboard/reports", icon: ChartBarIcon },
+    { name: "Revenue", href: "/revenue", icon: ChartBarIcon },
     { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
     { name: "Events", href: "/events", icon: HourglassIcon },
   ];
