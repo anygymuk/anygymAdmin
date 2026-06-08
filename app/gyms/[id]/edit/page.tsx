@@ -126,7 +126,8 @@ export default function EditGym() {
       if (data.opening_hours) {
         Object.entries(data.opening_hours).forEach(([day, hours]) => {
           if (typeof hours === "object" && hours !== null && "open" in hours && "close" in hours) {
-            openingHours[day] = { open: hours.open, close: hours.close };
+            const dayHours = hours as { open: string; close: string };
+            openingHours[day] = { open: dayHours.open, close: dayHours.close };
           } else {
             // If it's a string or other format, initialize with empty
             openingHours[day] = { open: "", close: "" };

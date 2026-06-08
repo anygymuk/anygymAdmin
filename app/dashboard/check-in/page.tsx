@@ -206,7 +206,7 @@ export default function CheckIn() {
             qrCodeRef.current = null;
             setScanning(false);
           })
-          .catch((err) => {
+          .catch((err: unknown) => {
             console.error("Error stopping QR scanner:", err);
             qrCodeRef.current = null;
             setScanning(false);
