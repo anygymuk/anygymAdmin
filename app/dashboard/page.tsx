@@ -51,7 +51,7 @@ export default function Dashboard() {
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Welcome to the AnyGym Admin Portal. Manage your gyms and settings from here.
+                Welcome to the <strong>anygym</strong> Admin Portal. Manage your gyms and settings from here.
               </p>
             </div>
 

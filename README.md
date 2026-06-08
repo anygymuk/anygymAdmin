@@ -1,6 +1,6 @@
-# AnyGym Admin
+# anygym Admin
 
-Admin portal for managing AnyGym gyms. This application uses Auth0 for authentication and integrates with the api.any-gym.com API.
+Admin portal for managing anygym gyms. This application uses Auth0 for authentication and integrates with the api.any-gym.com API.
 
 ## Features
 

@@ -93,7 +93,7 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
           <div className="flex-1 flex items-center">
             <Image
               src="https://res.cloudinary.com/njh101010/image/upload/v1764610563/anygym/anygym-white.svg"
-              alt="AnyGym"
+              alt="anygym"
               width={120}
               height={41}
               className="h-8 w-auto"
@@ -108,7 +108,7 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
           <div className="flex h-16 shrink-0 items-center">
             <Image
               src="https://res.cloudinary.com/njh101010/image/upload/v1764610563/anygym/anygym-white.svg"
-              alt="AnyGym"
+              alt="anygym"
               width={120}
               height={41}
               className="h-8 w-auto"
@@ -183,7 +183,7 @@ export default function Sidebar({ currentPath = "/dashboard" }: SidebarProps) {
               <div className="flex h-16 shrink-0 items-center justify-between">
                 <Image
                   src="https://res.cloudinary.com/njh101010/image/upload/v1764610563/anygym/anygym-white.svg"
-                  alt="AnyGym"
+                  alt="anygym"
                   width={120}
                   height={41}
                   className="h-8 w-auto"
