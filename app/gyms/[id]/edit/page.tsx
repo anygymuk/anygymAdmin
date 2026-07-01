@@ -15,6 +15,7 @@ interface GymDetails {
   latitude: number | string;
   longitude: number | string;
   required_tier: string;
+  price_per_pass: number | null;
   amenities: string[];
   opening_hours: Record<string, { open: string; close: string } | string>;
   phone: string | null;
@@ -46,6 +47,7 @@ export default function EditGym() {
     latitude: "",
     longitude: "",
     required_tier: "",
+    price_per_pass: "",
     amenities: [] as string[],
     opening_hours: {} as Record<string, { open: string; close: string }>,
     phone: "",
@@ -143,6 +145,10 @@ export default function EditGym() {
         latitude: data.latitude !== null && data.latitude !== undefined ? String(data.latitude) : "",
         longitude: data.longitude !== null && data.longitude !== undefined ? String(data.longitude) : "",
         required_tier: data.required_tier || "",
+        price_per_pass:
+          data.price_per_pass !== null && data.price_per_pass !== undefined
+            ? String(data.price_per_pass)
+            : "",
         amenities: data.amenities || [],
         opening_hours: openingHours,
         phone: data.phone || "",
@@ -212,6 +218,7 @@ export default function EditGym() {
       // Build update payload with only changed fields
       // The UpdateAdminGymDto expects specific field names and data types
       const updatePayload: Record<string, any> = {};
+      let validationError: string | null = null;
       
       console.log("=== DEBUG: Building Update Payload ===");
       console.log("Changed fields set:", Array.from(changedFields));
@@ -263,11 +270,31 @@ export default function EditGym() {
           // Allow empty image_url to be null
           updatePayload[field] = null;
           console.log(`  -> Added image_url as null`);
+        } else if (field === "price_per_pass") {
+          const raw = String(value).trim();
+          if (raw === "") {
+            updatePayload.price_per_pass = null;
+            console.log(`  -> Added price_per_pass as null`);
+          } else {
+            const numValue = parseFloat(raw);
+            if (isNaN(numValue) || numValue < 0) {
+              validationError = "Price per pass must be a valid non-negative number";
+            } else {
+              updatePayload.price_per_pass = numValue;
+              console.log(`  -> Added price_per_pass as number:`, numValue);
+            }
+          }
         } else {
           updatePayload[field] = value;
           console.log(`  -> Added ${field}:`, value);
         }
       });
+
+      if (validationError) {
+        setError(validationError);
+        setSaving(false);
+        return;
+      }
 
       console.log("Final update payload:", updatePayload);
       console.log("Final payload keys:", Object.keys(updatePayload));
@@ -674,6 +701,28 @@ export default function EditGym() {
                       <option value="premium">Premium</option>
                       <option value="elite">Elite</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="price_per_pass"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Price per pass (GBP)
+                    </label>
+                    <input
+                      type="number"
+                      id="price_per_pass"
+                      min="0"
+                      step="0.01"
+                      value={formData.price_per_pass}
+                      onChange={(e) => handleInputChange("price_per_pass", e.target.value)}
+                      placeholder="Not set"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Leave empty if not set. Enter 0 for a free pass.
+                    </p>
                   </div>
 
                   <div>

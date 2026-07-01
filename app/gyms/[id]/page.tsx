@@ -15,6 +15,7 @@ interface GymDetails {
   latitude: string;
   longitude: string;
   required_tier: string;
+  price_per_pass: number | null;
   amenities: string[];
   opening_hours: Record<string, any>;
   phone: string | null;
@@ -22,6 +23,15 @@ interface GymDetails {
   created_at: string;
   updated_at: string;
   status: string;
+}
+
+function formatPricePerPass(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "Not set";
+  if (value === 0) return "Free";
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(value);
 }
 
 export default function GymDetail() {
@@ -284,6 +294,12 @@ export default function GymDetail() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {gym.required_tier}
                         </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Price per pass</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        {formatPricePerPass(gym.price_per_pass)}
                       </dd>
                     </div>
                   </dl>
