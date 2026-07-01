@@ -301,6 +301,11 @@ export default function GymDetail() {
                       <dd className="mt-1 text-sm text-gray-900">
                         {formatPricePerPass(gym.price_per_pass)}
                       </dd>
+                      {gym.price_per_pass !== null && gym.price_per_pass !== undefined && (
+                        <dd className="mt-1 text-xs text-gray-500">
+                          Includes 15% anygym markup on the set pass price.
+                        </dd>
+                      )}
                     </div>
                   </dl>
                 </div>

@@ -25,6 +25,27 @@ interface GymDetails {
   status: string;
 }
 
+const ANYGYM_PASS_MARKUP = 0.15;
+
+function formatGbp(value: number): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(value);
+}
+
+function getCustomerPassPrice(basePriceRaw: string): number | null {
+  const raw = basePriceRaw.trim();
+  if (raw === "") return null;
+  const numValue = parseFloat(raw);
+  if (isNaN(numValue) || numValue < 0) return null;
+  return Math.round(numValue * (1 + ANYGYM_PASS_MARKUP) * 100) / 100;
+}
+
+function getBasePassPriceFromApi(apiValue: number): number {
+  return Math.round((apiValue / (1 + ANYGYM_PASS_MARKUP)) * 100) / 100;
+}
+
 export default function EditGym() {
   const { user, error: authError, isLoading: authLoading } = useUser();
   const router = useRouter();
@@ -147,7 +168,9 @@ export default function EditGym() {
         required_tier: data.required_tier || "",
         price_per_pass:
           data.price_per_pass !== null && data.price_per_pass !== undefined
-            ? String(data.price_per_pass)
+            ? data.price_per_pass === 0
+              ? "0"
+              : String(getBasePassPriceFromApi(data.price_per_pass))
             : "",
         amenities: data.amenities || [],
         opening_hours: openingHours,
@@ -276,12 +299,12 @@ export default function EditGym() {
             updatePayload.price_per_pass = null;
             console.log(`  -> Added price_per_pass as null`);
           } else {
-            const numValue = parseFloat(raw);
-            if (isNaN(numValue) || numValue < 0) {
+            const customerPrice = getCustomerPassPrice(raw);
+            if (customerPrice === null) {
               validationError = "Price per pass must be a valid non-negative number";
             } else {
-              updatePayload.price_per_pass = numValue;
-              console.log(`  -> Added price_per_pass as number:`, numValue);
+              updatePayload.price_per_pass = customerPrice;
+              console.log(`  -> Added price_per_pass as number (incl. 15%):`, customerPrice);
             }
           }
         } else {
@@ -456,6 +479,8 @@ export default function EditGym() {
     "saturday",
     "sunday",
   ];
+
+  const customerPassPrice = getCustomerPassPrice(formData.price_per_pass);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -710,18 +735,25 @@ export default function EditGym() {
                     >
                       Price per pass (GBP)
                     </label>
-                    <input
-                      type="number"
-                      id="price_per_pass"
-                      min="0"
-                      step="0.01"
-                      value={formData.price_per_pass}
-                      onChange={(e) => handleInputChange("price_per_pass", e.target.value)}
-                      placeholder="Not set"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    />
+                    <div className="mt-1 flex items-center gap-3">
+                      <input
+                        type="number"
+                        id="price_per_pass"
+                        min="0"
+                        step="0.01"
+                        value={formData.price_per_pass}
+                        onChange={(e) => handleInputChange("price_per_pass", e.target.value)}
+                        placeholder="Not set"
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                      {customerPassPrice !== null && (
+                        <span className="shrink-0 text-sm font-medium text-gray-900 whitespace-nowrap">
+                          → {formatGbp(customerPassPrice)}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      Leave empty if not set. Enter 0 for a free pass.
+                      Note: anygym add 15% to the set pass price. Leave empty if not set. Enter 0 for a free pass.
                     </p>
                   </div>
 
