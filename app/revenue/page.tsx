@@ -2,7 +2,7 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Sidebar from "../../components/Sidebar";
@@ -19,6 +19,65 @@ interface Location {
   [key: string]: any;
 }
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function extractPassesArray(source: unknown): any[] | null {
+  if (!source) return null;
+  if (Array.isArray(source)) return source;
+  if (typeof source === "object" && source !== null) {
+    const obj = source as Record<string, unknown>;
+    if (Array.isArray(obj.results)) return obj.results;
+    if (Array.isArray(obj.data)) return obj.data;
+    if (Array.isArray(obj.items)) return obj.items;
+  }
+  return null;
+}
+
+function resolvePassesFromResponse(
+  data: Record<string, any>,
+  revenue: RevenueData | null
+): { passesArray: any[]; passesPaginationData: Record<string, number | undefined> | null } {
+  const sources = [data.passes, data.results, revenue?.passes];
+  let emptyFallback: any[] | null = null;
+  let emptyPaginationData: Record<string, number | undefined> | null = null;
+
+  for (const source of sources) {
+    const extracted = extractPassesArray(source);
+    if (!extracted) continue;
+
+    const paginationSource =
+      typeof source === "object" && source !== null && !Array.isArray(source)
+        ? (source as Record<string, unknown>)
+        : null;
+    const paginationData = paginationSource
+      ? {
+          total: paginationSource.total as number | undefined,
+          totalPages: paginationSource.totalPages as number | undefined,
+          limit: (paginationSource.limit as number | undefined) || 20,
+        }
+      : null;
+
+    if (extracted.length > 0) {
+      return { passesArray: extracted, passesPaginationData: paginationData };
+    }
+
+    if (!emptyFallback) {
+      emptyFallback = extracted;
+      emptyPaginationData = paginationData;
+    }
+  }
+
+  return {
+    passesArray: emptyFallback ?? [],
+    passesPaginationData: emptyPaginationData,
+  };
+}
+
 export default function Revenue() {
   const { user, error: authError, isLoading: authLoading } = useUser();
   const router = useRouter();
@@ -30,12 +89,11 @@ export default function Revenue() {
   const getDefaultFromDate = () => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    return firstDay.toISOString().split("T")[0]; // yyyy-mm-dd format
+    return formatLocalDate(firstDay);
   };
 
   const getDefaultToDate = () => {
-    const now = new Date();
-    return now.toISOString().split("T")[0]; // yyyy-mm-dd format
+    return formatLocalDate(new Date());
   };
 
   const [fromDate, setFromDate] = useState<string>(getDefaultFromDate());
@@ -55,6 +113,7 @@ export default function Revenue() {
     totalPages?: number;
     limit?: number;
   }>({});
+  const fetchIdRef = useRef(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -129,6 +188,8 @@ export default function Revenue() {
       return;
     }
 
+    const fetchId = ++fetchIdRef.current;
+
     try {
       setLoading(true);
       setError(null);
@@ -163,114 +224,58 @@ export default function Revenue() {
       }
 
       const data = await response.json();
+
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
+
       console.log("API Response:", data);
       console.log("Passes data:", data.passes);
+      console.log("Results data:", data.results);
       console.log("Revenue data:", data.revenue);
 
       // Extract revenue object from response
       let revenue: RevenueData | null = null;
       if (data.revenue) {
-        revenue = data.revenue;
+        revenue = { ...data.revenue };
       } else if (data) {
-        // If the response itself is the revenue object
-        revenue = data;
+        revenue = { ...data };
       }
-      
-      // Handle passes - it might be in revenue.passes or data.passes
-      // According to the API, passes is at the top level (data.passes)
-      let passesArray: any[] | null = null;
-      let passesPaginationData: any = null;
-      
-      // Check if passes is at top level (primary location based on API response)
-      if (data.passes) {
-        if (Array.isArray(data.passes)) {
-          passesArray = data.passes;
-        } else if (typeof data.passes === 'object') {
-          // If passes is an object with results array (common pagination pattern)
-          if (data.passes.results && Array.isArray(data.passes.results)) {
-            passesArray = data.passes.results;
-            passesPaginationData = {
-              total: data.passes.total,
-              totalPages: data.passes.totalPages,
-              limit: data.passes.limit || 20,
-            };
-          } else if (data.passes.data && Array.isArray(data.passes.data)) {
-            passesArray = data.passes.data;
-            passesPaginationData = {
-              total: data.passes.total,
-              totalPages: data.passes.totalPages,
-              limit: data.passes.limit || 20,
-            };
-          } else {
-            // Passes object might have pagination metadata
-            passesPaginationData = {
-              total: data.passes.total,
-              totalPages: data.passes.totalPages,
-              limit: data.passes.limit || 20,
-            };
-          }
-        }
-      }
-      
-      // Check if passes is in revenue object (fallback)
-      if (!passesArray && revenue?.passes) {
-        if (Array.isArray(revenue.passes)) {
-          passesArray = revenue.passes;
-        } else if (typeof revenue.passes === 'object') {
-          if (revenue.passes.results && Array.isArray(revenue.passes.results)) {
-            passesArray = revenue.passes.results;
-            passesPaginationData = {
-              total: revenue.passes.total,
-              totalPages: revenue.passes.totalPages,
-              limit: revenue.passes.limit || 20,
-            };
-          } else if (revenue.passes.data && Array.isArray(revenue.passes.data)) {
-            passesArray = revenue.passes.data;
-            passesPaginationData = {
-              total: revenue.passes.total,
-              totalPages: revenue.passes.totalPages,
-              limit: revenue.passes.limit || 20,
-            };
-          }
-        }
-      }
-      
+
+      const { passesArray, passesPaginationData } = resolvePassesFromResponse(data, revenue);
+
       // Preserve total_passes before modifying passes
       const totalPassesValue = revenue?.total_passes;
-      
-      // Set passes array in revenue if we found it
-      if (passesArray && revenue) {
+
+      if (revenue) {
         revenue.passes = passesArray;
-        // Ensure total_passes is preserved and is a number
         if (totalPassesValue !== undefined) {
-          // If total_passes was accidentally set to an array/object, restore it from the original
-          if (Array.isArray(totalPassesValue) || (typeof totalPassesValue === 'object' && totalPassesValue !== null)) {
-            // Try to get the actual number from the original data
+          if (
+            Array.isArray(totalPassesValue) ||
+            (typeof totalPassesValue === "object" && totalPassesValue !== null)
+          ) {
             const originalTotalPasses = data.revenue?.total_passes || data.total_passes;
-            if (originalTotalPasses !== undefined && typeof originalTotalPasses === 'number') {
+            if (originalTotalPasses !== undefined && typeof originalTotalPasses === "number") {
               revenue.total_passes = originalTotalPasses;
             } else {
-              // Fallback: use passes array length if available
               revenue.total_passes = passesArray.length;
             }
           } else {
-            // Preserve the original value if it's a valid number
             revenue.total_passes = totalPassesValue;
           }
         }
       }
-      
+
       console.log("Final revenue.total_passes:", revenue?.total_passes);
-      console.log("Final revenue.passes type:", Array.isArray(revenue?.passes) ? "array" : typeof revenue?.passes);
+      console.log("Final revenue.passes length:", revenue?.passes?.length);
       console.log("Pagination data:", data.pagination);
-      
+
       setRevenueData(revenue);
       
       // Extract passes pagination metadata from data.pagination
       if (data.pagination) {
         const totalResults = data.pagination.total_results || 0;
-        const apiPage = data.pagination.page || passesPage;
-        const limit = 20; // passes_per_page is always 20
+        const limit = 20;
         const totalPages = totalResults > 0 ? Math.ceil(totalResults / limit) : 1;
         
         setPassesPagination({
@@ -278,31 +283,25 @@ export default function Revenue() {
           totalPages: totalPages,
           limit: limit,
         });
-        
-        console.log("Set pagination:", {
-          total: totalResults,
-          totalPages: totalPages,
-          limit: limit,
-          apiPage: apiPage,
-          currentPassesPage: passesPage,
-        });
       } else if (data.passes_pagination) {
-        // Fallback to passes_pagination if it exists
         setPassesPagination(data.passes_pagination);
       } else if (passesPaginationData) {
-        // Fallback to extracted passes pagination data
         setPassesPagination(passesPaginationData);
       } else {
-        // Reset pagination if not available
         setPassesPagination({});
       }
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) {
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch revenue";
       setError(errorMessage);
       console.error("Error fetching revenue:", err);
       setRevenueData(null);
     } finally {
-      setLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [user?.sub, fromDate, toDate, selectedGymId, passesPage]);
   
@@ -365,29 +364,22 @@ export default function Revenue() {
   const handleDateRangeChange = (dates: [Date | null, Date | null]) => {
     const [start, end] = dates;
     
-    // Always update state based on what react-datepicker provides
-    // This allows react-datepicker to properly reset the range when needed
     setStartDate(start);
     setEndDate(end);
+    setPassesPage(1);
     
-    // Update the string dates used for API calls
     if (start) {
-      const startStr = start.toISOString().split("T")[0];
-      setFromDate(startStr);
+      setFromDate(formatLocalDate(start));
     } else {
       setFromDate(getDefaultFromDate());
     }
     
     if (end) {
-      const endStr = end.toISOString().split("T")[0];
-      setToDate(endStr);
-      // Close the picker only when both start and end dates are selected
+      setToDate(formatLocalDate(end));
       if (start) {
         setIsDatePickerOpen(false);
       }
     } else {
-      // When end is null and we have a start date, user is selecting a new range
-      // Keep the picker open and use default toDate for API calls
       setToDate(getDefaultToDate());
     }
   };
@@ -633,10 +625,10 @@ export default function Revenue() {
                     value={selectedGymId !== null ? selectedGymId : ""}
                     onChange={(e) => {
                       const value = e.target.value;
+                      setPassesPage(1);
                       if (value === "") {
                         setSelectedGymId(null);
                       } else {
-                        // Try to parse as number, but keep as string if it's not a valid number
                         const numValue = Number(value);
                         setSelectedGymId(isNaN(numValue) ? value : numValue);
                       }
